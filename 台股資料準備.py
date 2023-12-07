@@ -30,7 +30,7 @@ stock_info = stock_info[['證券碼','目前狀態','證券名稱']]
 stock_info
 
 # %% 價量資料 raw data
-raw_price = pd_read_mssql_data("""SELECT * FROM tej_twn_apiprcd where [mdate]>='2020-01-01' AND [mdate]<='2023-11-30' ORDER BY [mdate],[coid]""", server, database, server_uid, server_pwd)
+raw_price = pd_read_mssql_data("""SELECT * FROM tej_twn_apiprcd where [mdate]>='2018-01-01' AND [mdate]<='2023-11-30' ORDER BY [mdate],[coid]""", server, database, server_uid, server_pwd)
 df_table_info = pd_read_mssql_data("SELECT *  FROM [FinanceOther].[dbo].[tej_twn_datatype] where [table] = 'TWN/APIPRCD'", server, database, server_uid, server_pwd)
 raw_price = raw_price.rename(columns=dict(df_table_info[['name','cname']].values))
 raw_price.rename(columns={'證券名稱':'證券碼'},inplace=True)
@@ -53,7 +53,7 @@ adj_p = adj_p[['證券名稱','資料日', '市場別', '開盤價', '最高價'
 adj_p.to_feather('價量資料.feather')
 
 # %% 籌碼資料 raw data
-raw_inst = pd_read_mssql_data("""SELECT * FROM tej_twn_apishract where [mdate]>='2020-01-01' AND [mdate]<='2023-11-30' ORDER BY [mdate],[coid]""", server, database, server_uid, server_pwd)
+raw_inst = pd_read_mssql_data("""SELECT * FROM tej_twn_apishract where [mdate]>='2018-01-01' AND [mdate]<='2023-11-30' ORDER BY [mdate],[coid]""", server, database, server_uid, server_pwd)
 df_table_info = pd_read_mssql_data("SELECT *  FROM [FinanceOther].[dbo].[tej_twn_datatype] where [table] = 'TWN/APISHRACT'", server, database, server_uid, server_pwd)
 raw_inst = raw_inst.rename(columns=dict(df_table_info[['name','cname']].values))
 raw_inst.rename(columns={'證券名稱':'證券碼'},inplace=True)
@@ -74,7 +74,7 @@ inst = inst[['證券名稱','資料日', '市場別', '外資買進張數', '外
 inst.to_feather('籌碼資料.feather')
 
 # %% 月營收資料 raw data
-raw_sale = pd_read_mssql_data("""SELECT * FROM tej_twn_apisale where [mdate]>='2020-01-01' AND [mdate]<='2023-11-30' ORDER BY [mdate],[coid]""", server, database, server_uid, server_pwd)
+raw_sale = pd_read_mssql_data("""SELECT * FROM tej_twn_apisale where [mdate]>='2018-01-01' AND [mdate]<='2023-11-30' ORDER BY [mdate],[coid]""", server, database, server_uid, server_pwd)
 df_table_info = pd_read_mssql_data("SELECT *  FROM [FinanceOther].[dbo].[tej_twn_datatype] where [table] = 'TWN/APISALE'", server, database, server_uid, server_pwd)
 raw_sale = raw_sale.rename(columns=dict(df_table_info[['name','cname']].values))
 raw_sale.rename(columns={'公司':'證券碼'},inplace=True)
@@ -87,10 +87,12 @@ sale = sale[['證券名稱', '年月', '營收發布日', '單月營收(千元)'
        '與歷史最高單月營收比%', '歷史最低單月營收(千元)', '與歷史最低單月營收比%', '近12月累計營收(千元)',
        '去年近12月累計營收(千元)', '近12月累計營收成長率％', '近 3月累計營收(千元)', '去年近 3月累計營收(千元)',
        '近3月累計營收成長率％', '近3月累計營收與上月比％']]
+sale.dropna(subset=['營收發布日'],inplace=True)
+sale = sale.reset_index(drop=True)
 sale.to_feather('月營收資料.feather')
 
 # %% 財報資料 raw data (抓Q))
-raw_fin = pd_read_mssql_data("""SELECT * FROM tej_twn_ainvfq1 where [mdate]>='2020-01-01' AND [mdate]<='2023-11-30' AND [key3] = 'Q' ORDER BY [mdate],[coid]""", server, database, server_uid, server_pwd)
+raw_fin = pd_read_mssql_data("""SELECT * FROM tej_twn_ainvfq1 where [mdate]>='2018-01-01' AND [mdate]<='2023-11-30' AND [key3] = 'Q' ORDER BY [mdate],[coid]""", server, database, server_uid, server_pwd)
 df_table_info = pd_read_mssql_data("SELECT *  FROM [FinanceOther].[dbo].[tej_twn_datatype] where [table] = 'TWN/AINVFQ1'", server, database, server_uid, server_pwd)
 raw_fin = raw_fin.rename(columns=dict(df_table_info[['name','cname']].values))
 raw_fin.rename(columns={'公司':'證券碼'},inplace=True)
@@ -100,5 +102,9 @@ fin = pd.merge(raw_fin,stock_info,on='證券碼',how='inner').sort_values(by=['�
 fin['證券碼'] = fin['證券碼'].str.strip() + fin['證券名稱']
 fin.drop(columns=['目前狀態','證券名稱'],inplace=True)
 fin.rename(columns={'證券碼':'證券名稱'},inplace=True)
+fin = fin[fin['序號']=='001']
+fin.drop_duplicates(subset=['證券名稱','編表日'],inplace=True)
+fin.dropna(subset=['編表日'],inplace=True)
+fin = fin.reset_index(drop=True)
 fin.to_feather('季財報資料.feather')
 
